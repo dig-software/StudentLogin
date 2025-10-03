@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Login Page</title>
+        <style>
+            body {
+                background-color: #e6f0ff;
+            }
+            .center-form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 80vh;
+            }
+            form {
+                background: #1976d2;
+                padding: 30px 40px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                color: #fff;
+                width: 300px;
+            }
+            label {
+                color: #fff;
+            }
+            input[type="text"], input[type="password"] {
+                width: 100%;
+                padding: 8px;
+                margin: 8px 0;
+                border: none;
+                border-radius: 4px;
+            }
+            input[type="submit"] {
+                background: #1565c0;
+                color: #fff;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            input[type="submit"]:hover {
+                background: #0d47a1;
+            }
+            a {
+                color: #1976d2;
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="center-form">
+            <h2 style="color:#1976d2;">Login</h2>
+            <form action="login_process.php" method="POST">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+                <input type="hidden" id="webauthn_login_credential" name="webauthn_login_credential">
+                <button type="button" id="login_bio" style="background:#43a047; color:#fff; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; margin-bottom:10px;">Login with Biometrics</button>
+                <input type="submit" value="Login">
+            </form>
+            <br>
+            <a href="reset_request.html">Forgot Password?</a>
+            <br>
+            Not registered? <a href="/StudentLogin/registration.html">Register here</a>.
+        <script>
+        function base64urlToBytes(b64url){
+            let s = b64url.replace(/-/g,'+').replace(/_/g,'/');
+            const pad = s.length % 4; if(pad) s += '='.repeat(4-pad);
+            const bin = atob(s); const bytes = new Uint8Array(bin.length);
+            for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+            return bytes;
+        }
+        document.getElementById('login_bio').onclick = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            if(!username){ alert('Enter username first.'); return; }
+            try {
+                const r = await fetch('get_webauthn_id.php?username=' + encodeURIComponent(username));
+                const data = await r.json();
+                if(!data.credential_id){
+                    alert('No biometric credential registered for this user.');
+                    return;
+                }
+                const challenge = crypto.getRandomValues(new Uint8Array(32));
+                const publicKey = {
+                    challenge,
+                    allowCredentials: [{ id: base64urlToBytes(data.credential_id), type:'public-key', transports:['internal'] }],
+                    userVerification: 'preferred',
+                    timeout: 60000
+                };
+                console.log('[WEBAUTHN] Request options', publicKey);
+                const assertion = await navigator.credentials.get({ publicKey });
+                console.log('[WEBAUTHN] Assertion received id=', assertion.id);
+                document.getElementById('webauthn_login_credential').value = JSON.stringify({ id: assertion.id, type: assertion.type });
+                // Auto submit when assertion captured
+                e.target.closest('form').submit();
+            } catch(err){
+                console.error('WebAuthn login error', err);
+                alert('WebAuthn login failed: ' + err);
+            }
+        };
+        </script>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Request Password Reset</title>
+    <style>
+        body { background-color: #e6f0ff; }
+        .center-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+        }
+        form {
+            background: #1976d2;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            color: #fff;
+            width: 300px;
+        }
+        label { color: #fff; }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 4px;
+        }
+        input[type="submit"] {
+            background: #1565c0;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        input[type="submit"]:hover {
+            background: #0d47a1;
+        }
+        a { color: #1976d2; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="center-form">
+        <h2 style="color:#1976d2;">Request Password Reset</h2>
+        <form action="reset_request_process.php" method="POST">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <input type="submit" value="Generate Code">
+            <button type="button" id="bio_reset_btn" style="margin-top:10px;background:#43a047;color:#fff;border:none;padding:10px 15px;border-radius:6px;cursor:pointer;">Use Biometrics Instead</button>
+        </form>
+        <br>
+        <a href="/StudentLogin/login.html">Back to Login</a>
+        <script>
+        // Helper: decode base64url to Uint8Array
+        function b64urlToBytes(s){
+            s = s.replace(/-/g,'+').replace(/_/g,'/');
+            const pad = s.length % 4; if(pad) s += '='.repeat(4-pad);
+            const bin = atob(s); const out = new Uint8Array(bin.length);
+            for (let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out;
+        }
+        document.getElementById('bio_reset_btn').addEventListener('click', async (e)=>{
+            e.preventDefault();
+            const u = document.getElementById('username').value.trim();
+            if(!u){ alert('Enter username first'); return; }
+            try {
+                const r = await fetch('get_webauthn_id.php?username='+encodeURIComponent(u));
+                const data = await r.json();
+                if(!data.credential_id){ alert('No biometric credential for this user.'); return; }
+                const challenge = crypto.getRandomValues(new Uint8Array(32)); // (placeholder)
+                const publicKey = { challenge, allowCredentials:[{ id: b64urlToBytes(data.credential_id), type:'public-key', transports:['internal']}], userVerification:'preferred', timeout:60000 };
+                const assertion = await navigator.credentials.get({ publicKey });
+                // Send to backend to authorize reset session
+                const formData = new FormData();
+                formData.append('username', u);
+                formData.append('credential_id', assertion.id);
+                const vr = await fetch('reset_bio_verify.php', { method:'POST', body: formData });
+                const vj = await vr.json();
+                if(vj.success){
+                    window.location.href = 'reset_password.html?bio=1&user=' + encodeURIComponent(u);
+                } else {
+                    alert('Biometric verification failed: ' + (vj.error||'unknown'));
+                }
+            } catch(err){
+                alert('Biometric flow failed: '+err);
+                console.error(err);
+            }
+        });
+        </script>
+    </div>
+</body>
+</html>

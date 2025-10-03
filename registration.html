@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Registration</title>
+        <style>
+            body {
+                background-color: #e6f0ff;
+            }
+            .center-form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 80vh;
+            }
+            form {
+                background: #1976d2;
+                padding: 30px 40px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                color: #fff;
+                width: 300px;
+            }
+            label {
+                color: #fff;
+            }
+            input[type="text"], input[type="email"], input[type="password"] {
+                width: 100%;
+                padding: 8px;
+                margin: 8px 0;
+                border: none;
+                border-radius: 4px;
+            }
+            input[type="submit"] {
+                background: #1565c0;
+                color: #fff;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            input[type="submit"]:hover {
+                background: #0d47a1;
+            }
+            a {
+                color: #1976d2;
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="center-form">
+            <h2 style="color:#1976d2;">Registration Form</h2>
+            <form action="registration_process.php" method="POST" enctype="multipart/form-data">
+                <label for="Name">Name:</label>
+                <input type="text" id="name" name="name" required>
+                <label for="Username">Username:</label>
+                <input type="text" id="username" name="username" required>
+                <label for="reg_number">Registration Number:</label>
+                <input type="text" id="reg_number" name="reg_number" required>
+                <label for="phone">Phone:</label>
+                <input type="text" id="phone" name="phone" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+                <label for="course">Course:</label>
+                <input type="text" id="course" name="course" required>
+                <label for="profile_pic">Profile Picture:</label>
+                <input type="file" id="profile_pic" name="profile_pic" accept="image/*">
+                <label for="show_videos" style="margin-top:10px;">Allow other users to view my videos:</label>
+                <select id="show_videos" name="show_videos" required>
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                </select>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+                <input type="hidden" id="webauthn_credential" name="webauthn_credential">
+                <button type="button" id="register_bio" style="background:#43a047; color:#fff; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; margin-bottom:10px;">Register with Biometrics</button>
+                <input type="submit" value="Register">
+            </form>
+            <br>
+            <a href="/StudentLogin/login.html">Click here to login after registration </a>.
+            <script>
+            document.getElementById('register_bio').onclick = async function(e) {
+                e.preventDefault();
+                // Collect username and displayName for WebAuthn
+                const username = document.getElementById('username').value;
+                const name = document.getElementById('name').value;
+                if (!username || !name) {
+                    alert('Please fill in Name and Username first.');
+                    return;
+                }
+                // Create a random challenge
+                const challenge = window.crypto.getRandomValues(new Uint8Array(32));
+                // Prepare PublicKeyCredentialCreationOptions
+                const publicKey = {
+                    challenge: challenge,
+                    rp: { name: "Student Portal" },
+                    user: {
+                        id: new TextEncoder().encode(username),
+                        name: username,
+                        displayName: name
+                    },
+                    pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+                    authenticatorSelection: { userVerification: "preferred" },
+                    timeout: 60000,
+                    attestation: "none"
+                };
+                try {
+                    const cred = await navigator.credentials.create({ publicKey });
+                    const credential = {
+                        id: cred.id,
+                        rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
+                        type: cred.type,
+                        response: {
+                            attestationObject: btoa(String.fromCharCode(...new Uint8Array(cred.response.attestationObject))),
+                            clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON)))
+                        }
+                    };
+                    document.getElementById('webauthn_credential').value = JSON.stringify(credential);
+                    document.querySelector('form').submit();
+                } catch (err) {
+                    alert('WebAuthn registration failed: ' + err);
+                }
+            };
+            </script>
+        </div>
+    </body>
+</html>

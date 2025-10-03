@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebAuthn Biometric Demo</title>
+    <style>
+        body { background: #e6f0ff; font-family: Segoe UI, Arial, sans-serif; }
+        .container { max-width: 400px; margin: 60px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #1976d233; padding: 32px; }
+        h2 { color: #1976d2; }
+        button { background: #1976d2; color: #fff; border: none; border-radius: 6px; padding: 10px 18px; font-size: 1em; cursor: pointer; margin-top: 12px; }
+        .msg { margin-top: 18px; color: #388e3c; }
+        .err { margin-top: 18px; color: #d81b60; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Biometric Login Demo (WebAuthn)</h2>
+    <button id="registerBtn">Register Biometric</button>
+    <button id="loginBtn">Login with Biometric</button>
+    <div id="result"></div>
+</div>
+<script>
+const result = document.getElementById('result');
+
+// Helper to encode/decode base64url
+function bufferToBase64url(buffer) {
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+}
+function base64urlToBuffer(baseurl) {
+    let base64 = baseurl.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
+
+// Demo: store credential in localStorage (for real use, store on server)
+function saveCredential(id, publicKey) {
+    localStorage.setItem('webauthn_id', id);
+    localStorage.setItem('webauthn_pk', bufferToBase64url(publicKey));
+}
+function getCredential() {
+    const id = localStorage.getItem('webauthn_id');
+    const pk = localStorage.getItem('webauthn_pk');
+    return id && pk ? { id, pk } : null;
+}
+
+document.getElementById('registerBtn').onclick = async function() {
+    result.textContent = '';
+    try {
+        const publicKey = {
+            challenge: Uint8Array.from(window.crypto.getRandomValues(new Uint8Array(32))),
+            rp: { name: 'StudentLogin Demo' },
+            user: {
+                id: Uint8Array.from('demo-user', c => c.charCodeAt(0)),
+                name: 'demo-user',
+                displayName: 'Demo User'
+            },
+            pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+            authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+            timeout: 60000,
+            attestation: 'none'
+        };
+        const cred = await navigator.credentials.create({ publicKey });
+        // Save to backend
+        const rawId = bufferToBase64url(cred.rawId);
+        // Try to get publicKey from attestationObject (for demo, just send rawId)
+        // In real use, parse attestationObject for publicKey
+        const response = await fetch('webauthn_register.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'username=demo-user&credential_id=' + encodeURIComponent(rawId) + '&public_key=' + encodeURIComponent(rawId)
+        });
+        const data = await response.json();
+        if (data.success) {
+            saveCredential(rawId, cred.rawId); // still save locally for demo
+            result.innerHTML = '<span class="msg">Biometric registered and saved to backend! You can now login with your device biometrics.</span>';
+        } else {
+            result.innerHTML = '<span class="err">Registration failed (backend): ' + (data.error || 'Unknown error') + '</span>';
+        }
+    } catch (e) {
+        result.innerHTML = '<span class="err">Registration failed: ' + e + '</span>';
+    }
+};
+
+document.getElementById('loginBtn').onclick = async function() {
+    result.textContent = '';
+    const cred = getCredential();
+    if (!cred) {
+        result.innerHTML = '<span class="err">No credential registered. Please register first.</span>';
+        return;
+    }
+    try {
+        const publicKey = {
+            challenge: Uint8Array.from(window.crypto.getRandomValues(new Uint8Array(32))),
+            allowCredentials: [{ id: base64urlToBuffer(cred.id), type: 'public-key' }],
+            userVerification: 'required',
+            timeout: 60000
+        };
+        await navigator.credentials.get({ publicKey });
+        result.innerHTML = '<span class="msg">Biometric login successful!</span>';
+    } catch (e) {
+        result.innerHTML = '<span class="err">Login failed: ' + e + '</span>';
+    }
+};
+</script>
+</body>
+</html>
