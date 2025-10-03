@@ -1,0 +1,9 @@
+# Ignore things not needed in image
+.git
+.gitignore
+README.md
+schema.sql
+uploads/*
+!uploads/.gitkeep
+node_modules
+*.log
