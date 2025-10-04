@@ -1,4 +1,25 @@
-# Render infrastructure-as-code specification for StudentLogin
+services:
+  - type: web
+    name: studentlogin-sandbox
+    env: docker
+    plan: free
+    autoDeploy: false
+    rootDir: .
+    envVars:
+      - key: DB_HOST
+        value: serverless-eastus.sysp0000.db3.skysql.com
+      - key: DB_PORT
+        value: "4048"
+      - key: DB_USER
+        value: example_user
+      - key: DB_NAME
+        value: studentlogin
+      - key: DB_SSL
+        value: "1"
+      - key: DB_SSL_VERIFY
+        value: "1"
+      - key: DB_PASS
+        sync: false# Render infrastructure-as-code specification for StudentLogin
 # Docs: https://render.com/docs/infrastructure-as-code
 # After committing & pushing, you can click "New +" -> "Blueprint" in Render and point to the repo.
 # NOTE: Secrets (like DB_PASS) marked with sync: false must be added manually in the Render dashboard.

@@ -1,3 +1,21 @@
+FROM php:8.2-apache
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && docker-php-ext-install mysqli \
+    && docker-php-ext-enable mysqli \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/www/html
+COPY . /var/www/html
+
+RUN mkdir -p uploads \
+ && chown -R www-data:www-data uploads \
+ && chmod -R 775 uploads
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://localhost/login.html || exit 1
 # Simple Dockerfile for Railway / generic container hosting
 FROM php:8.2-apache
 

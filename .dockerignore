@@ -1,3 +1,11 @@
+uploads/*
+.git
+.gitignore
+README.md
+*.sql
+*.md
+Dockerfile
+vendor/
 # Ignore things not needed in image
 .git
 .gitignore
