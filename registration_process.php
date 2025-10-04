@@ -1,7 +1,8 @@
 <?php
-// Database connection
+// Database connection & ensure schema exists (first-run deploy convenience)
 $conn = null;
-require_once 'db_connect.php';
+require_once __DIR__ . '/db_connect.php';
+@require_once __DIR__ . '/bootstrap_schema.php';
 if (!$conn) die("Connection failed");
 
 
