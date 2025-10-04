@@ -142,7 +142,7 @@ if (empty($username) || empty($password)) {
     exit();
 }
 
-$stmt = $conn->prepare("SELECT password FROM login WHERE username=?");
+$stmt = $conn->prepare("SELECT password FROM registration WHERE username=?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $stmt->store_result();

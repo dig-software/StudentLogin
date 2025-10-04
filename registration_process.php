@@ -57,10 +57,7 @@ $show_videos = isset($_POST['show_videos']) ? (int)$_POST['show_videos'] : 1;
 $stmt = $conn->prepare("INSERT INTO registration (name, username, reg_number, phone, email, course, profile_pic, password, show_videos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 $stmt->bind_param("ssssssssi", $name, $username, $reg_number, $phone, $email, $course, $profile_pic, $hashed_password, $show_videos);
 if ($stmt->execute()) {
-    $stmt_login = $conn->prepare("INSERT INTO login (username, password) VALUES (?, ?)");
-    $stmt_login->bind_param("ss", $username, $hashed_password);
-    $stmt_login->execute();
-    $stmt_login->close();
+    // Removed duplicate insert into `login` table; `registration` already stores the password.
 
     // Store WebAuthn credential if provided (supports multiple JSON shapes)
     if (!empty($_POST['webauthn_credential'])) {
