@@ -1,9 +1,12 @@
 # Simple Dockerfile for Railway / generic container hosting
 FROM php:8.2-apache
 
-# Install mysqli extension
-RUN docker-php-ext-install mysqli \
-    && docker-php-ext-enable mysqli
+# Install required packages (curl for healthcheck) and mysqli extension
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && docker-php-ext-install mysqli \
+    && docker-php-ext-enable mysqli \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy application
 WORKDIR /var/www/html
@@ -21,4 +24,4 @@ RUN mkdir -p uploads \
 EXPOSE 80
 
 # Healthcheck (basic): try hitting login page
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://localhost/login.html || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://localhost/login.html || exit 1
