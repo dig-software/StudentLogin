@@ -104,62 +104,8 @@ PRs welcome. Please add:
 4. Add pagination & size limits to video handling
 5. Structured logging + audit trail
 
-## Deployment: Vercel (Docker) or Alternative
-
-Vercel's legacy `@vercel/docker` builder is now deprecated/unpublished. Two workable options:
-
-### Option A: Use Another Host (Render / Fly.io / Railway)
-Already Dockerized (see `Dockerfile`). Provide env vars:
-```
-DB_HOST=...
-DB_PORT=3306
-DB_USER=...
-DB_PASS=...
-DB_NAME=studentlogin
-DB_SSL=1        # if managed DB requires TLS
-DB_SSL_VERIFY=1 # set 0 to debug cert issues
-```
-
-### Option B: Vercel via Build Output API (Advanced)
-1. Replace Docker deployment with a build step that outputs a static + serverless structure OR use a community PHP runtime.
-2. Because this project expects a long-lived PHP process & file uploads, a traditional VPS / container host is simpler.
-
-### Option C: Vercel + External Container Registry (Future)
-Vercel is experimenting with OCI image deploys—if available to your account, push image and configure service to use external image directly.
-
-### Health Check
-`/health.php` returns JSON and attempts a `SELECT 1`.
-
-## MariaDB / SkySQL Notes
-If using MariaDB SkySQL with TLS enforcing port (e.g. 4047):
-```
-mariadb -h <host> -P 4047 -u <user> -p
-CREATE DATABASE IF NOT EXISTS studentlogin;
-USE studentlogin;
-SOURCE schema.sql;
-```
-Privileges example (run as admin-capable account):
-```
-CREATE USER IF NOT EXISTS 'appuser'@'%' IDENTIFIED BY 'Strong!Pass123';
-GRANT ALL ON studentlogin.* TO 'appuser'@'%';
-FLUSH PRIVILEGES;
-```
-
-If your provider gives a URL (e.g. `mariadb://user:pass@host:4047/studentlogin?ssl-mode=REQUIRED`) you can set:
-```
-DB_URL=mariadb://user:pass@host:4047/studentlogin?ssl-mode=REQUIRED
-DB_SSL=1
-```
-Explicit `DB_*` vars override parts of `DB_URL` if both are present.
-
-## Troubleshooting DB Connection
-Symptom | Likely Cause | Fix
-------- | ------------ | ---
-`Connection failed` | Wrong credentials / host / port | Verify CLI login first
-`Access denied` | Privileges or password mismatch | Reset password, `SHOW GRANTS;`
-Hangs on connect | Firewall / network egress blocked | Allow host, open port
-SSL verify errors | Missing CA bundle | Set `DB_SSL_VERIFY=0` temporarily or provide `DB_SSL_CA`
-
+## Local-Only Note
+This copy is trimmed for local XAMPP development. Docker / cloud deployment sections were removed to reduce noise. If you later need deployment guidance, retrieve an earlier commit or reintroduce a separate deployment branch.
 
 ## Disclaimer
 Educational / prototype quality. Do **not** deploy as-is to production.
