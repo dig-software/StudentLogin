@@ -1,10 +1,50 @@
 <?php
-// Centralized DB connection (MySQL / MariaDB) with flexible env & URL parsing for Docker, Render, Vercel, Railway, etc.
+// Centralized DB connection (MySQL / MariaDB) with flexible env & URL / JSON / base64 config parsing.
 // Priority order for individual values:
 // 1. Connection URL style env (DB_URL / DATABASE_URL / JAWSDB_URL / CLEARDB_DATABASE_URL)
 // 2. Explicit DB_* env vars
 // 3. Provider-specific MYSQL* (Railway / some hosts)
 // 4. Local development defaults
+
+// Optional .env file loader (only if file exists & not already loaded). Non-fatal.
+if (!function_exists('studentlogin_load_env')) {
+    @require_once __DIR__ . '/load_env.php';
+    if (function_exists('studentlogin_load_env')) {
+        studentlogin_load_env(__DIR__ . '/.env');
+    }
+}
+
+// Support a single JSON blob (SKYSQL_CREDS) -> {"host":"...","port":4048,"user":"...","password":"...","db":"studentlogin"}
+if (getenv('SKYSQL_CREDS') && !getenv('DB_HOST')) {
+    $json = json_decode(getenv('SKYSQL_CREDS'), true);
+    if (is_array($json)) {
+        foreach ([
+            'host' => 'DB_HOST', 'port' => 'DB_PORT', 'user' => 'DB_USER',
+            'password' => 'DB_PASS', 'db' => 'DB_NAME'
+        ] as $k => $envK) {
+            if (isset($json[$k]) && getenv($envK) === false) {
+                putenv($envK . '=' . $json[$k]);
+            }
+        }
+        // Auto-enable SSL if JSON indicates or port looks like SkySQL TLS port (> 4000)
+        if (!getenv('DB_SSL')) putenv('DB_SSL=1');
+        if (!getenv('DB_SSL_VERIFY')) putenv('DB_SSL_VERIFY=1');
+    }
+}
+
+// Support base64-app config (APP_CONFIG_B64) with key=value lines
+if (getenv('APP_CONFIG_B64')) {
+    $decoded = base64_decode(getenv('APP_CONFIG_B64'), true);
+    if ($decoded !== false) {
+        $lines = preg_split('/\r?\n/', $decoded);
+        foreach ($lines as $line) {
+            if (strpos($line, '=') !== false && $line[0] !== '#') {
+                [$k,$v] = array_map('trim', explode('=', $line, 2));
+                if ($k !== '' && getenv($k) === false) { putenv($k.'='.$v); }
+            }
+        }
+    }
+}
 
 // Optional connection URL (e.g. mysql://user:pass@host:4047/dbname?ssl-mode=REQUIRED)
 $rawUrl = getenv('DB_URL') ?: (getenv('DATABASE_URL') ?: (getenv('JAWSDB_URL') ?: getenv('CLEARDB_DATABASE_URL')));
