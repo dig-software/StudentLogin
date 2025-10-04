@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "student-login-php",
+  "builds": [
+    { "src": "Dockerfile", "use": "@vercel/docker" }
+  ],
+  "github": {
+    "silent": true
+  },
+  "env": {
+    "DB_HOST": "${DB_HOST}",
+    "DB_PORT": "${DB_PORT}",
+    "DB_USER": "${DB_USER}",
+    "DB_NAME": "${DB_NAME}",
+    "DB_CHARSET": "utf8mb4",
+    "DB_SSL": "1",
+    "DB_SSL_VERIFY": "1"
+  },
+  "ignoreCommand": "echo 'Using Dockerfile build – no root ignoring needed'"
+}

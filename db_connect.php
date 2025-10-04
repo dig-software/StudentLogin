@@ -1,19 +1,54 @@
 <?php
-// Centralized DB connection with environment-variable fallback for container (Railway / Docker) deployment
-// Priority order for each value:
-// 1. Explicit DB_* env vars (recommended to set in Railway dashboard)
-// 2. Railway auto-provisioned MYSQL* vars (if a MySQL service is attached)
-// 3. Local development defaults
+// Centralized DB connection (MySQL / MariaDB) with flexible env & URL parsing for Docker, Render, Vercel, Railway, etc.
+// Priority order for individual values:
+// 1. Connection URL style env (DB_URL / DATABASE_URL / JAWSDB_URL / CLEARDB_DATABASE_URL)
+// 2. Explicit DB_* env vars
+// 3. Provider-specific MYSQL* (Railway / some hosts)
+// 4. Local development defaults
 
-// Gather basic connection parameters (MySQL / MariaDB compatible)
-$servername   = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: 'localhost');
-$username_db  = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: 'root');
-$password_db  = getenv('DB_PASS') ?: (getenv('MYSQLPASSWORD') ?: '');
-$dbname       = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: 'class');
-$port         = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: 3306));
+// Optional connection URL (e.g. mysql://user:pass@host:4047/dbname?ssl-mode=REQUIRED)
+$rawUrl = getenv('DB_URL') ?: (getenv('DATABASE_URL') ?: (getenv('JAWSDB_URL') ?: getenv('CLEARDB_DATABASE_URL')));
+
+// Base defaults (may be overridden by URL parsing or explicit vars)
+$servername   = 'localhost';
+$username_db  = 'root';
+$password_db  = '';
+$dbname       = 'class';
+$port         = 3306;
+
+if ($rawUrl) {
+    // Support mysql:// and mariadb:// schemes; silently ignore parse errors.
+    $parsed = @parse_url($rawUrl);
+    if ($parsed && isset($parsed['host'])) {
+        $servername  = $parsed['host'];
+        if (isset($parsed['user'])) $username_db = $parsed['user'];
+        if (isset($parsed['pass'])) $password_db = $parsed['pass'];
+        if (isset($parsed['path'])) {
+            $p = ltrim($parsed['path'], '/');
+            if ($p !== '') $dbname = $p;
+        }
+        if (isset($parsed['port'])) $port = (int)$parsed['port'];
+        // Extract query params (e.g., ssl-mode=REQUIRED)
+        if (isset($parsed['query'])) {
+            parse_str($parsed['query'], $q);
+            if (isset($q['database']) && $q['database'] !== '') $dbname = $q['database'];
+            // Provide minimal mapping for ssl requirements if present.
+            if (isset($q['ssl-mode']) && strtoupper($q['ssl-mode']) !== 'DISABLED') {
+                putenv('DB_SSL=1');
+            }
+        }
+    }
+}
+
+// Override with explicit env vars if provided (these take precedence over URL parts)
+$servername   = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: $servername);
+$username_db  = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: $username_db);
+$password_db  = getenv('DB_PASS') ?: (getenv('MYSQLPASSWORD') ?: $password_db);
+$dbname       = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: $dbname);
+$port         = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: $port));
 $charset      = getenv('DB_CHARSET') ?: 'utf8mb4';
 
-// Optional TLS / SSL flags (useful for managed MariaDB / SkySQL / cloud DBs)
+// Optional TLS / SSL flags (useful for managed MariaDB / SkySQL / PlanetScale / cloud DBs)
 $wantSSL      = getenv('DB_SSL') === '1';                 // enable SSL
 $caFile       = getenv('DB_SSL_CA') ?: '';                // path to CA bundle / cert
 $verifyPeer   = getenv('DB_SSL_VERIFY') !== '0';          // default verify on
