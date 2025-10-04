@@ -120,20 +120,6 @@ DB_SSL=1        # if managed DB requires TLS
 DB_SSL_VERIFY=1 # set 0 to debug cert issues
 ```
 
-Single-variable alternative (preferred for SkySQL) — set only this (plus DB_SSL / DB_SSL_VERIFY):
-```
-SKYSQL_CREDS={"host":"serverless-eastus.sysp0000.db3.skysql.com","port":4048,"user":"appuser","password":"YOUR_STRONG_PASS","db":"studentlogin"}
-DB_SSL=1
-DB_SSL_VERIFY=1
-```
-If both individual DB_* and SKYSQL_CREDS are present, individual DB_* values override.
-
-To generate SKYSQL_CREDS from already set local env values:
-```
-php generate_skysql_creds.php
-```
-Copy the JSON output into the Render environment variable field.
-
 ### Option B: Vercel via Build Output API (Advanced)
 1. Replace Docker deployment with a build step that outputs a static + serverless structure OR use a community PHP runtime.
 2. Because this project expects a long-lived PHP process & file uploads, a traditional VPS / container host is simpler.
