@@ -167,12 +167,13 @@ if (!$conn || $conn->connect_errno) {
 // Apply charset (ignore failure silently to avoid fatal in environments lacking charset)
 @mysqli_set_charset($conn, $charset);
 
-// Optional: Strengthen session cookie settings when served over HTTPS
-if (PHP_SAPI !== 'cli') {
-    if (function_exists('session_set_cookie_params')) {
+// Optional: Strengthen session cookie settings when served over HTTPS.
+// Skip if a session is already active to prevent warnings (local dev often starts session earlier).
+// You can disable this logic entirely by setting APP_DISABLE_SECURE_SESSION=1.
+if (PHP_SAPI !== 'cli' && getenv('APP_DISABLE_SECURE_SESSION') !== '1') {
+    if (session_status() === PHP_SESSION_NONE && function_exists('session_set_cookie_params')) {
         $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
         $params = session_get_cookie_params();
-        // Re-set only if not already configured earlier
         session_set_cookie_params([
             'lifetime' => $params['lifetime'],
             'path'     => $params['path'],
