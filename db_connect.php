@@ -88,6 +88,36 @@ $dbname       = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: $dbname);
 $port         = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: $port));
 $charset      = getenv('DB_CHARSET') ?: 'utf8mb4';
 
+// Auto-correct case where someone pasted multiple KEY=VALUE pairs into DB_HOST causing hostname to include spaces, e.g.:
+// "serverless-eastus.sysp0000.db3.skysql.com DB_PORT=4048 DB_USER=user DB_PASS=pass ..."
+if (strpos($servername, ' DB_') !== false) {
+    $parts = preg_split('/\s+/', trim($servername));
+    if ($parts && count($parts) > 1) {
+        $servername = array_shift($parts); // first token is the real host
+        foreach ($parts as $tok) {
+            if (strpos($tok, '=') !== false) {
+                [$k,$v] = explode('=', $tok, 2);
+                if (preg_match('/^DB_(HOST|PORT|USER|PASS|NAME|SSL|SSL_VERIFY|CHARSET)$/', $k)) {
+                    // Only set if not already provided explicitly in environment
+                    if (getenv($k) === false) { putenv($k.'='.$v); }
+                    // Reflect any corrected critical values immediately
+                    switch ($k) {
+                        case 'DB_PORT': $port = (int)$v; break;
+                        case 'DB_USER': $username_db = $v; break;
+                        case 'DB_PASS': $password_db = $v; break;
+                        case 'DB_NAME': $dbname = $v; break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Debug (non-production) if DB_DEBUG=1: emit minimal connection params (omit password)
+if (getenv('DB_DEBUG') === '1') {
+    error_log('[DB_DEBUG] host='.$servername.' port='.$port.' user='.$username_db.' db='.$dbname.' ssl='.(getenv('DB_SSL')?:'0'));
+}
+
 // Optional TLS / SSL flags (useful for managed MariaDB / SkySQL / PlanetScale / cloud DBs)
 $wantSSL      = getenv('DB_SSL') === '1';                 // enable SSL
 $caFile       = getenv('DB_SSL_CA') ?: '';                // path to CA bundle / cert
