@@ -1,0 +1,65 @@
+# Render infrastructure-as-code specification for StudentLogin
+# Docs: https://render.com/docs/infrastructure-as-code
+# After committing & pushing, you can click "New +" -> "Blueprint" in Render and point to the repo.
+# NOTE: Secrets (like DB_PASS) marked with sync: false must be added manually in the Render dashboard.
+
+services:
+  - type: web                # Web service with HTTP/HTTPS
+    name: studentlogin       # Service name in Render (change if already taken)
+    env: docker              # Use the Dockerfile in repo root
+    plan: free               # Free tier. Upgrade if you need more resources.
+    autoDeploy: true         # Auto-deploy on pushes to the default branch
+    rootDir: .               # Repo root (adjust if you move source)
+
+    # Optionally restrict which branch auto-deploys:
+    # branch: main
+
+    # Health check (Dockerfile serves login.html). Uncomment to enable Render healthcheck.
+    # healthCheckPath: /login.html
+
+    # Environment variables (non-secret). Adjust DB_* values to match your provider.
+    envVars:
+      - key: DB_HOST
+        value: serverless-eastus.sysp0000.db3.skysql.com
+      - key: DB_PORT
+        value: "4047"
+      - key: DB_USER
+        value: dbpbf16115950
+      - key: DB_NAME
+        value: studentlogin
+      - key: DB_SSL
+        value: "1"          # Enable TLS in db_connect.php
+      - key: DB_SSL_VERIFY
+        value: "1"          # Set to 0 only if cert verification fails
+      - key: DB_CHARSET
+        value: utf8mb4
+      - key: DB_STRICT
+        value: "1"          # Better error visibility during testing; remove in prod
+      - key: DB_PASS         # Secret password (do NOT commit actual value)
+        sync: false          # Must be supplied via dashboard -> Environment -> Add Env Var
+
+    # Optionally pin Docker build args (uncomment & adjust if you add any ARGs in Dockerfile):
+    # build:
+    #   dockerfilePath: ./Dockerfile
+    #   args:
+    #     - key: SOME_BUILD_ARG
+    #       value: someValue
+
+    # Uncomment to add a deploy hook for external triggers:
+    # deployHooks:
+    #   - type: restart
+    #     path: /redeploy
+
+# Optional: future static site or worker examples can go below.
+# staticSites:
+#   - name: docs
+#     rootDir: docs
+#     buildCommand: npm run build
+#     publishPath: build
+
+# workers:
+#   - type: worker
+#     name: background-jobs
+#     env: docker
+#     plan: free
+#     rootDir: worker
